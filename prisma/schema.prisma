@@ -1,0 +1,187 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ============ USER SYSTEM ============
+model User {
+  id           String    @id @default(cuid())
+  email        String    @unique
+  passwordHash String    @map("password_hash")
+  name         String?
+  avatar       String?
+  role         UserRole  @default(USER)
+  createdAt    DateTime  @default(now()) @map("created_at")
+  updatedAt    DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  comments     Comment[]
+  likes        Like[]
+  sessions     Session[]
+
+  @@map("users")
+}
+
+enum UserRole {
+  USER
+  ADMIN
+}
+
+model Session {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  token     String   @unique
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+// ============ CONTENT SYSTEM ============
+model Category {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  color       String?
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  postMeta    PostMeta[]
+
+  @@map("categories")
+}
+
+// PostMeta stores database-side metadata for MDX posts
+// The actual content remains in MDX files
+model PostMeta {
+  id          String   @id @default(cuid())
+  slug        String   @unique
+  viewCount   Int      @default(0) @map("view_count")
+  categoryId  String?  @map("category_id")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  category    Category? @relation(fields: [categoryId], references: [id])
+  comments    Comment[]
+  likes       Like[]
+
+  @@map("post_meta")
+}
+
+// ============ ENGAGEMENT SYSTEM ============
+model Comment {
+  id         String   @id @default(cuid())
+  content    String
+  postSlug   String   @map("post_slug")
+  userId     String?  @map("user_id")
+  guestName  String?  @map("guest_name")
+  guestEmail String?  @map("guest_email")
+  parentId   String?  @map("parent_id")
+  isApproved Boolean  @default(false) @map("is_approved")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  postMeta PostMeta  @relation(fields: [postSlug], references: [slug], onDelete: Cascade)
+  user     User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  parent   Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies  Comment[] @relation("CommentReplies")
+
+  @@map("comments")
+}
+
+model Like {
+  id        String   @id @default(cuid())
+  postSlug  String   @map("post_slug")
+  userId    String?  @map("user_id")
+  ipHash    String?  @map("ip_hash")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  // Relations
+  postMeta PostMeta @relation(fields: [postSlug], references: [slug], onDelete: Cascade)
+  user     User?    @relation(fields: [userId], references: [id], onDelete: SetNull)
+
+  @@unique([postSlug, userId])
+  @@unique([postSlug, ipHash])
+  @@map("likes")
+}
+
+// ============ ANALYTICS ============
+model PageView {
+  id        String   @id @default(cuid())
+  postSlug  String   @map("post_slug")
+  ipHash    String?  @map("ip_hash")
+  userAgent String?  @map("user_agent")
+  referer   String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([postSlug, createdAt])
+  @@map("page_views")
+}
+
+// ============ VLOG SYSTEM ============
+model Vlog {
+  id          String     @id @default(cuid())
+  title       String
+  slug        String     @unique
+  description String?
+  videoUrl    String     @map("video_url")
+  thumbnailUrl String?   @map("thumbnail_url")
+  duration    Int?       // Duration in seconds
+  fileSize    Int?       @map("file_size") // Size in bytes
+  viewCount   Int        @default(0) @map("view_count")
+  isPublished Boolean    @default(false) @map("is_published")
+  publishedAt DateTime?  @map("published_at")
+  createdAt   DateTime   @default(now()) @map("created_at")
+  updatedAt   DateTime   @updatedAt @map("updated_at")
+
+  // Relations
+  likes       VlogLike[]
+  comments    VlogComment[]
+
+  @@map("vlogs")
+}
+
+model VlogLike {
+  id        String   @id @default(cuid())
+  vlogId    String   @map("vlog_id")
+  userId    String?  @map("user_id")
+  ipHash    String?  @map("ip_hash")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  vlog Vlog @relation(fields: [vlogId], references: [id], onDelete: Cascade)
+
+  @@unique([vlogId, userId])
+  @@unique([vlogId, ipHash])
+  @@map("vlog_likes")
+}
+
+model VlogComment {
+  id         String   @id @default(cuid())
+  content    String
+  vlogId     String   @map("vlog_id")
+  userId     String?  @map("user_id")
+  guestName  String?  @map("guest_name")
+  guestEmail String?  @map("guest_email")
+  parentId   String?  @map("parent_id")
+  isApproved Boolean  @default(false) @map("is_approved")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  vlog    Vlog          @relation(fields: [vlogId], references: [id], onDelete: Cascade)
+  parent  VlogComment?  @relation("VlogCommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies VlogComment[] @relation("VlogCommentReplies")
+
+  @@map("vlog_comments")
+}
