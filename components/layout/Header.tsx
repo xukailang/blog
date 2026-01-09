@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useTheme } from 'next-themes'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -14,8 +15,13 @@ export default function Header() {
   const [isScrolled, setIsScrolled] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
-  const [theme, setTheme] = useState<'dark' | 'light' | 'cyber'>('cyber')
+  const [mounted, setMounted] = useState(false)
+  const { theme, setTheme } = useTheme()
   const pathname = usePathname()
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
 
   useEffect(() => {
     const handleScroll = () => {
@@ -26,11 +32,23 @@ export default function Header() {
   }, [])
 
   const toggleTheme = () => {
-    const themes: ('dark' | 'light' | 'cyber')[] = ['cyber', 'dark', 'light']
-    const currentIndex = themes.indexOf(theme)
+    const themes = ['cyber', 'dark', 'light']
+    const currentIndex = themes.indexOf(theme || 'cyber')
     const nextTheme = themes[(currentIndex + 1) % themes.length]
     setTheme(nextTheme)
-    document.documentElement.setAttribute('data-theme', nextTheme)
+  }
+
+  const getThemeIcon = () => {
+    if (!mounted) return <Zap className="w-5 h-5" />
+
+    switch (theme) {
+      case 'light':
+        return <Sun className="w-5 h-5" />
+      case 'dark':
+        return <Moon className="w-5 h-5" />
+      default:
+        return <Zap className="w-5 h-5" />
+    }
   }
 
   const handleSearch = (e: React.FormEvent) => {
@@ -45,9 +63,13 @@ export default function Header() {
       className={cn(
         'fixed top-0 left-0 right-0 z-50 transition-all duration-300',
         isScrolled
-          ? 'bg-cyber-black/90 backdrop-blur-md border-b border-cyber-cyan/30'
+          ? 'backdrop-blur-md border-b'
           : 'bg-transparent'
       )}
+      style={{
+        backgroundColor: isScrolled ? 'var(--header-bg)' : 'transparent',
+        borderColor: 'var(--border-color)',
+      }}
     >
       <nav className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         <div className="flex items-center justify-between h-16">
@@ -56,11 +78,16 @@ export default function Header() {
             <motion.div
               whileHover={{ rotate: 360 }}
               transition={{ duration: 0.5 }}
-              className="w-10 h-10 bg-gradient-to-br from-cyber-cyan to-cyber-pink rounded-lg flex items-center justify-center"
+              className="w-10 h-10 rounded-lg flex items-center justify-center"
+              style={{ background: 'linear-gradient(to bottom right, var(--accent-primary), var(--accent-secondary))' }}
             >
-              <Zap className="w-6 h-6 text-cyber-black" />
+              <Zap className="w-6 h-6" style={{ color: 'var(--bg-primary)' }} />
             </motion.div>
-            <span className="font-cyber text-xl font-bold text-cyber-cyan group-hover:text-cyber-pink transition-colors glitch" data-text={siteConfig.name}>
+            <span
+              className="font-cyber text-xl font-bold transition-colors glitch"
+              data-text={siteConfig.name}
+              style={{ color: 'var(--accent-primary)' }}
+            >
               {siteConfig.name}
             </span>
           </Link>
@@ -73,16 +100,20 @@ export default function Header() {
                 href={item.href}
                 className={cn(
                   'font-cyber text-sm uppercase tracking-wider transition-all duration-300 relative group',
-                  pathname === item.href
-                    ? 'text-cyber-cyan neon-text'
-                    : 'text-gray-400 hover:text-cyber-cyan'
+                  pathname === item.href ? 'neon-text' : ''
                 )}
+                style={{
+                  color: pathname === item.href ? 'var(--accent-primary)' : 'var(--text-secondary)'
+                }}
               >
                 {item.name}
-                <span className={cn(
-                  'absolute -bottom-1 left-0 h-0.5 bg-cyber-cyan transition-all duration-300',
-                  pathname === item.href ? 'w-full' : 'w-0 group-hover:w-full'
-                )} />
+                <span
+                  className={cn(
+                    'absolute -bottom-1 left-0 h-0.5 transition-all duration-300',
+                    pathname === item.href ? 'w-full' : 'w-0 group-hover:w-full'
+                  )}
+                  style={{ backgroundColor: 'var(--accent-primary)' }}
+                />
               </Link>
             ))}
           </div>
@@ -94,7 +125,8 @@ export default function Header() {
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               onClick={() => setSearchOpen(!searchOpen)}
-              className="p-2 text-gray-400 hover:text-cyber-cyan transition-colors"
+              className="p-2 transition-colors"
+              style={{ color: 'var(--text-secondary)' }}
             >
               <Search className="w-5 h-5" />
             </motion.button>
@@ -104,15 +136,10 @@ export default function Header() {
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               onClick={toggleTheme}
-              className="p-2 text-gray-400 hover:text-cyber-pink transition-colors"
+              className="p-2 transition-colors"
+              style={{ color: 'var(--accent-secondary)' }}
             >
-              {theme === 'light' ? (
-                <Sun className="w-5 h-5" />
-              ) : theme === 'dark' ? (
-                <Moon className="w-5 h-5" />
-              ) : (
-                <Zap className="w-5 h-5" />
-              )}
+              {getThemeIcon()}
             </motion.button>
 
             {/* User Menu */}
@@ -125,7 +152,8 @@ export default function Header() {
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
               onClick={() => setIsOpen(!isOpen)}
-              className="md:hidden p-2 text-gray-400 hover:text-cyber-cyan transition-colors"
+              className="md:hidden p-2 transition-colors"
+              style={{ color: 'var(--text-secondary)' }}
             >
               {isOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
             </motion.button>
@@ -148,9 +176,14 @@ export default function Header() {
                   value={searchQuery}
                   onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="搜索文章..."
-                  className="w-full bg-cyber-dark border border-cyber-cyan/30 rounded-lg px-4 py-2 pl-10 text-gray-200 placeholder-gray-500 focus:outline-none focus:border-cyber-cyan focus:ring-1 focus:ring-cyber-cyan font-mono"
+                  className="w-full rounded-lg px-4 py-2 pl-10 font-mono focus:outline-none focus:ring-1"
+                  style={{
+                    backgroundColor: 'var(--bg-secondary)',
+                    border: '1px solid var(--border-color)',
+                    color: 'var(--text-primary)',
+                  }}
                 />
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-500" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--text-muted)' }} />
               </div>
             </motion.form>
           )}
@@ -164,7 +197,11 @@ export default function Header() {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="md:hidden bg-cyber-dark/95 backdrop-blur-md border-b border-cyber-cyan/30"
+            className="md:hidden backdrop-blur-md border-b"
+            style={{
+              backgroundColor: 'var(--header-bg)',
+              borderColor: 'var(--border-color)',
+            }}
           >
             <div className="px-4 py-4 space-y-2">
               {siteConfig.nav.map((item) => (
@@ -172,12 +209,12 @@ export default function Header() {
                   key={item.href}
                   href={item.href}
                   onClick={() => setIsOpen(false)}
-                  className={cn(
-                    'block px-4 py-3 rounded-lg font-cyber text-sm uppercase tracking-wider transition-all',
-                    pathname === item.href
-                      ? 'bg-cyber-cyan/10 text-cyber-cyan border border-cyber-cyan/30'
-                      : 'text-gray-400 hover:bg-cyber-cyan/5 hover:text-cyber-cyan'
-                  )}
+                  className="block px-4 py-3 rounded-lg font-cyber text-sm uppercase tracking-wider transition-all"
+                  style={{
+                    backgroundColor: pathname === item.href ? 'var(--bg-secondary)' : 'transparent',
+                    color: pathname === item.href ? 'var(--accent-primary)' : 'var(--text-secondary)',
+                    border: pathname === item.href ? '1px solid var(--border-color)' : '1px solid transparent',
+                  }}
                 >
                   {item.name}
                 </Link>

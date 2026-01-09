@@ -4,6 +4,9 @@ import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import Particles from '@/components/effects/Particles'
 import Scanlines from '@/components/effects/Scanlines'
+import ThemeProvider from '@/components/providers/ThemeProvider'
+import BGMProvider from '@/components/media/BGMProvider'
+import BGMPlayer from '@/components/media/BGMPlayer'
 import { siteConfig } from '@/config/site'
 
 export const metadata: Metadata = {
@@ -43,15 +46,20 @@ export default function RootLayout({
   return (
     <html lang="zh-CN" suppressHydrationWarning>
       <body className="min-h-screen bg-cyber-black text-gray-200 cyber-grid-bg">
-        <Particles />
-        <Scanlines />
-        <div className="relative z-10 flex flex-col min-h-screen">
-          <Header />
-          <main className="flex-grow pt-16">
-            {children}
-          </main>
-          <Footer />
-        </div>
+        <ThemeProvider>
+          <BGMProvider>
+            <Particles />
+            <Scanlines />
+            <div className="relative z-10 flex flex-col min-h-screen">
+              <Header />
+              <main className="flex-grow pt-16">
+                {children}
+              </main>
+              <Footer />
+            </div>
+            <BGMPlayer />
+          </BGMProvider>
+        </ThemeProvider>
       </body>
     </html>
   )

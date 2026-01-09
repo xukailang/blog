@@ -11,18 +11,25 @@ import NeonBorder from '@/components/effects/NeonBorder'
 interface PostCardProps {
   post: PostMeta
   index?: number
+  disableAnimation?: boolean
 }
 
-export default function PostCard({ post, index = 0 }: PostCardProps) {
+export default function PostCard({ post, index = 0, disableAnimation = false }: PostCardProps) {
   const colors: ('cyan' | 'pink' | 'purple' | 'green')[] = ['cyan', 'pink', 'purple', 'green']
   const color = colors[index % colors.length]
 
+  const motionProps = disableAnimation
+    ? {}
+    : {
+        initial: { opacity: 0, y: 20 },
+        animate: { opacity: 1, y: 0 },
+        exit: { opacity: 0, y: -20 },
+        transition: { delay: index * 0.1 },
+        layout: true,
+      }
+
   return (
-    <motion.article
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: index * 0.1 }}
-    >
+    <motion.article {...motionProps}>
       <Link href={`/blog/${post.slug}`}>
         <NeonBorder color={color} className="cyber-card p-6 h-full">
           {/* Cover Image */}

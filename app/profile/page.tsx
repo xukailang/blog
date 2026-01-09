@@ -1,8 +1,9 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
+import { Camera } from 'lucide-react'
 
 interface User {
   id: string
@@ -14,9 +15,11 @@ interface User {
 
 export default function ProfilePage() {
   const router = useRouter()
+  const fileInputRef = useRef<HTMLInputElement>(null)
   const [user, setUser] = useState<User | null>(null)
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
+  const [uploading, setUploading] = useState(false)
   const [name, setName] = useState('')
   const [avatar, setAvatar] = useState('')
   const [message, setMessage] = useState('')
@@ -71,6 +74,41 @@ export default function ProfilePage() {
     }
   }
 
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    setUploading(true)
+    setMessage('')
+
+    try {
+      const formData = new FormData()
+      formData.append('file', file)
+
+      const res = await fetch('/api/users/avatar', {
+        method: 'POST',
+        body: formData,
+      })
+
+      const data = await res.json()
+
+      if (res.ok) {
+        setAvatar(data.url)
+        setMessage('头像上传成功')
+        fetchUser()
+      } else {
+        setMessage(data.error || '上传失败')
+      }
+    } catch {
+      setMessage('上传失败')
+    } finally {
+      setUploading(false)
+      if (fileInputRef.current) {
+        fileInputRef.current.value = ''
+      }
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen bg-gray-900 flex items-center justify-center">
@@ -112,7 +150,7 @@ export default function ProfilePage() {
             )}
 
             <div className="flex items-center gap-6">
-              <div className="flex-shrink-0">
+              <div className="flex-shrink-0 relative">
                 {avatar ? (
                   <img
                     src={avatar}
@@ -124,18 +162,34 @@ export default function ProfilePage() {
                     {(name || user.email)[0].toUpperCase()}
                   </div>
                 )}
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/jpeg,image/png,image/gif,image/webp"
+                  onChange={handleAvatarUpload}
+                  className="hidden"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploading}
+                  className="absolute bottom-0 right-0 w-8 h-8 bg-cyan-600 hover:bg-cyan-500 rounded-full flex items-center justify-center text-white transition-colors disabled:opacity-50"
+                  title="上传头像"
+                >
+                  {uploading ? (
+                    <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <Camera className="w-4 h-4" />
+                  )}
+                </button>
               </div>
               <div className="flex-1">
                 <label className="block text-sm font-medium text-gray-300 mb-1">
-                  头像 URL
+                  头像
                 </label>
-                <input
-                  type="url"
-                  value={avatar}
-                  onChange={(e) => setAvatar(e.target.value)}
-                  className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg focus:outline-none focus:border-cyan-500 text-white"
-                  placeholder="https://example.com/avatar.jpg"
-                />
+                <p className="text-sm text-gray-500">
+                  点击相机图标上传头像，支持 JPG、PNG、GIF、WebP，最大 2MB
+                </p>
               </div>
             </div>
 

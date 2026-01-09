@@ -4,7 +4,9 @@
 @tailwind components;
 @tailwind utilities;
 
-:root {
+/* 默认赛博朋克主题 (cyber) - 霓虹风格 */
+:root,
+[data-theme="cyber"] {
   --cyber-black: #0a0a0f;
   --cyber-dark: #12121a;
   --cyber-purple: #9d4edd;
@@ -13,6 +15,70 @@
   --cyber-yellow: #ffbe0b;
   --cyber-green: #39ff14;
   --cyber-blue: #3a86ff;
+
+  /* 语义化变量 */
+  --bg-primary: #0a0a0f;
+  --bg-secondary: #12121a;
+  --bg-card: rgba(18, 18, 26, 0.9);
+  --text-primary: #e0e0e0;
+  --text-secondary: #9ca3af;
+  --text-muted: #6b7280;
+  --accent-primary: #00f5ff;
+  --accent-secondary: #ff006e;
+  --border-color: rgba(0, 245, 255, 0.3);
+  --header-bg: rgba(10, 10, 15, 0.9);
+  --glow-color: rgba(0, 245, 255, 0.5);
+  --grid-color: rgba(0, 245, 255, 0.03);
+}
+
+/* 暗色主题 - 简约深色 */
+[data-theme="dark"] {
+  --cyber-black: #111111;
+  --cyber-dark: #1e1e1e;
+  --cyber-purple: #a78bfa;
+  --cyber-pink: #f472b6;
+  --cyber-cyan: #22d3ee;
+  --cyber-yellow: #fbbf24;
+  --cyber-green: #4ade80;
+  --cyber-blue: #60a5fa;
+
+  --bg-primary: #111111;
+  --bg-secondary: #1e1e1e;
+  --bg-card: rgba(30, 30, 30, 0.95);
+  --text-primary: #f9fafb;
+  --text-secondary: #d1d5db;
+  --text-muted: #9ca3af;
+  --accent-primary: #22d3ee;
+  --accent-secondary: #f472b6;
+  --border-color: rgba(255, 255, 255, 0.1);
+  --header-bg: rgba(17, 17, 17, 0.95);
+  --glow-color: transparent;
+  --grid-color: rgba(255, 255, 255, 0.02);
+}
+
+/* 亮色主题 - 清爽明亮 */
+[data-theme="light"] {
+  --cyber-black: #ffffff;
+  --cyber-dark: #f8fafc;
+  --cyber-purple: #8b5cf6;
+  --cyber-pink: #ec4899;
+  --cyber-cyan: #0891b2;
+  --cyber-yellow: #d97706;
+  --cyber-green: #059669;
+  --cyber-blue: #2563eb;
+
+  --bg-primary: #ffffff;
+  --bg-secondary: #f1f5f9;
+  --bg-card: rgba(255, 255, 255, 0.9);
+  --text-primary: #0f172a;
+  --text-secondary: #475569;
+  --text-muted: #94a3b8;
+  --accent-primary: #0891b2;
+  --accent-secondary: #ec4899;
+  --border-color: rgba(15, 23, 42, 0.1);
+  --header-bg: rgba(255, 255, 255, 0.9);
+  --glow-color: transparent;
+  --grid-color: rgba(15, 23, 42, 0.03);
 }
 
 * {
@@ -43,11 +109,12 @@ html {
 }
 
 body {
-  background-color: var(--cyber-black);
-  color: #e0e0e0;
+  background-color: var(--bg-primary);
+  color: var(--text-primary);
   font-family: 'JetBrains Mono', monospace;
   min-height: 100vh;
   overflow-x: hidden;
+  transition: background-color 0.3s ease, color 0.3s ease;
 }
 
 ::selection {
@@ -89,17 +156,15 @@ body {
   }
 
   .cyber-card {
-    background: linear-gradient(135deg, rgba(18, 18, 26, 0.9), rgba(10, 10, 15, 0.95));
-    border: 1px solid rgba(0, 245, 255, 0.3);
+    background: var(--bg-card);
+    border: 1px solid var(--border-color);
     backdrop-filter: blur(10px);
     transition: all 0.3s ease;
   }
 
   .cyber-card:hover {
-    border-color: var(--cyber-cyan);
-    box-shadow:
-      0 0 20px rgba(0, 245, 255, 0.3),
-      inset 0 0 20px rgba(0, 245, 255, 0.05);
+    border-color: var(--accent-primary);
+    box-shadow: 0 0 20px var(--glow-color);
     transform: translateY(-5px);
   }
 
@@ -191,10 +256,43 @@ body {
 
   .cyber-grid-bg {
     background-image:
-      linear-gradient(rgba(0, 245, 255, 0.03) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(0, 245, 255, 0.03) 1px, transparent 1px);
+      linear-gradient(var(--grid-color) 1px, transparent 1px),
+      linear-gradient(90deg, var(--grid-color) 1px, transparent 1px);
     background-size: 50px 50px;
   }
+}
+
+/* 主题特定样式覆盖 */
+[data-theme="dark"] .neon-text,
+[data-theme="light"] .neon-text {
+  text-shadow: none;
+}
+
+[data-theme="dark"] .neon-border,
+[data-theme="light"] .neon-border {
+  box-shadow: none;
+}
+
+[data-theme="dark"] .glitch::before,
+[data-theme="dark"] .glitch::after,
+[data-theme="light"] .glitch::before,
+[data-theme="light"] .glitch::after {
+  display: none;
+}
+
+[data-theme="dark"] .scanlines,
+[data-theme="light"] .scanlines {
+  display: none;
+}
+
+/* 亮色主题特殊处理 */
+[data-theme="light"] .cyber-button {
+  background: linear-gradient(135deg, var(--accent-primary), var(--accent-secondary));
+  color: white;
+}
+
+[data-theme="light"] .cyber-button:hover {
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.2);
 }
 
 @keyframes glitch-anim {

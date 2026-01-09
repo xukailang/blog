@@ -16,10 +16,10 @@ export const siteConfig = {
     { name: '关于', href: '/about' },
   ],
   giscus: {
-    repo: 'your-username/your-repo',
-    repoId: 'your-repo-id',
+    repo: 'xukailang/blog',
+    repoId: 'R_kgDOQ1zHvw',
     category: 'Announcements',
-    categoryId: 'your-category-id',
+    categoryId: 'DIC_kwDOQ1zHv84C0t2q',
   },
 }
 

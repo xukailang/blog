@@ -43,10 +43,10 @@ export async function createComment(data: CreateCommentData) {
 }
 
 export async function getCommentsByPostSlug(postSlug: string, includeUnapproved = false) {
-  return prisma.comment.findMany({
+  // 获取该文章的所有评论（扁平结构）
+  const allComments = await prisma.comment.findMany({
     where: {
       postSlug,
-      parentId: null,
       ...(includeUnapproved ? {} : { isApproved: true }),
     },
     include: {
@@ -57,22 +57,39 @@ export async function getCommentsByPostSlug(postSlug: string, includeUnapproved 
           avatar: true,
         },
       },
-      replies: {
-        where: includeUnapproved ? {} : { isApproved: true },
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              avatar: true,
-            },
-          },
-        },
-        orderBy: { createdAt: 'asc' },
-      },
     },
-    orderBy: { createdAt: 'desc' },
+    orderBy: { createdAt: 'asc' },
   })
+
+  // 构建评论映射
+  const commentMap = new Map<string, typeof allComments[0] & { replies: typeof allComments }>()
+
+  // 初始化所有评论，添加空的 replies 数组
+  allComments.forEach(comment => {
+    commentMap.set(comment.id, { ...comment, replies: [] })
+  })
+
+  // 构建树形结构
+  const rootComments: (typeof allComments[0] & { replies: typeof allComments })[] = []
+
+  allComments.forEach(comment => {
+    const commentWithReplies = commentMap.get(comment.id)!
+    if (comment.parentId) {
+      // 如果有父评论，添加到父评论的 replies 中
+      const parent = commentMap.get(comment.parentId)
+      if (parent) {
+        parent.replies.push(commentWithReplies)
+      }
+    } else {
+      // 顶级评论
+      rootComments.push(commentWithReplies)
+    }
+  })
+
+  // 按创建时间倒序排列顶级评论
+  rootComments.sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime())
+
+  return rootComments
 }
 
 export async function getCommentById(id: string) {

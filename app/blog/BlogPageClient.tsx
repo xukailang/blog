@@ -1,7 +1,7 @@
 'use client'
 
-import { useState, useMemo } from 'react'
-import { motion } from 'framer-motion'
+import { useState, useMemo, useRef } from 'react'
+import { motion, AnimatePresence } from 'framer-motion'
 import { Search, Filter, X } from 'lucide-react'
 import { PostMeta } from '@/lib/mdx'
 import PostCard from '@/components/blog/PostCard'
@@ -18,6 +18,7 @@ export default function BlogPageClient({ posts, tags, categories }: BlogPageClie
   const [selectedTag, setSelectedTag] = useState<string | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [showFilters, setShowFilters] = useState(false)
+  const hasInteracted = useRef(false)
 
   const filteredPosts = useMemo(() => {
     return posts.filter(post => {
@@ -72,7 +73,10 @@ export default function BlogPageClient({ posts, tags, categories }: BlogPageClie
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
+                onChange={(e) => {
+                  hasInteracted.current = true
+                  setSearchQuery(e.target.value)
+                }}
                 placeholder="搜索文章..."
                 className="w-full bg-cyber-dark border border-cyber-cyan/30 rounded-lg px-4 py-3 pl-12 text-gray-200 placeholder-gray-500 focus:outline-none focus:border-cyber-cyan focus:ring-1 focus:ring-cyber-cyan font-mono"
               />
@@ -191,11 +195,18 @@ export default function BlogPageClient({ posts, tags, categories }: BlogPageClie
 
         {/* Posts Grid */}
         {filteredPosts.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredPosts.map((post, index) => (
-              <PostCard key={post.slug} post={post} index={index} />
-            ))}
-          </div>
+          <AnimatePresence mode="popLayout">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredPosts.map((post, index) => (
+                <PostCard
+                  key={post.slug}
+                  post={post}
+                  index={index}
+                  disableAnimation={hasInteracted.current}
+                />
+              ))}
+            </div>
+          </AnimatePresence>
         ) : (
           <motion.div
             initial={{ opacity: 0 }}
