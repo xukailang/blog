@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { toggleLike, getLikeCount, hasUserLiked } from '@/lib/db/likes'
 import { getCurrentUser } from '@/lib/auth-users'
+import { rateLimit, createRateLimitResponse, addRateLimitHeaders } from '@/lib/rate-limit'
 
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
@@ -26,6 +27,12 @@ export async function GET(request: NextRequest) {
 }
 
 export async function POST(request: NextRequest) {
+  // Apply rate limiting for interaction endpoints
+  const { success, remaining, resetTime } = rateLimit(request, 'interaction')
+  if (!success) {
+    return createRateLimitResponse(resetTime, 'interaction')
+  }
+
   try {
     const { slug } = await request.json()
 
@@ -39,7 +46,8 @@ export async function POST(request: NextRequest) {
     const result = await toggleLike(slug, user?.id, ip)
     const count = await getLikeCount(slug)
 
-    return NextResponse.json({ likes: count, liked: result.liked })
+    const response = NextResponse.json({ likes: count, liked: result.liked })
+    return addRateLimitHeaders(response, remaining, resetTime, 'interaction')
   } catch (error) {
     console.error('Toggle like error:', error)
     return NextResponse.json({ error: 'Failed to save like' }, { status: 500 })

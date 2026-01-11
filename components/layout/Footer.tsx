@@ -4,6 +4,7 @@ import Link from 'next/link'
 import { motion } from 'framer-motion'
 import { Github, Twitter, Mail, Rss, Heart, Zap } from 'lucide-react'
 import { siteConfig } from '@/config/site'
+import NewsletterForm from '@/components/newsletter/NewsletterForm'
 
 export default function Footer() {
   const currentYear = new Date().getFullYear()
@@ -21,6 +22,11 @@ export default function Footer() {
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyber-cyan to-transparent" />
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12">
+        {/* Newsletter Section */}
+        <div className="mb-12 max-w-xl mx-auto">
+          <NewsletterForm variant="inline" />
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           {/* Brand */}
           <div className="space-y-4">

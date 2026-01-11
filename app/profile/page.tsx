@@ -4,13 +4,20 @@ import { useState, useEffect, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Camera } from 'lucide-react'
+import WechatBindCard from '@/components/auth/WechatBindCard'
 
 interface User {
   id: string
-  email: string
+  email: string | null
   name: string | null
   avatar: string | null
   role: 'USER' | 'ADMIN'
+}
+
+interface WechatBindInfo {
+  nickname: string | null
+  avatar: string | null
+  bindAt: string
 }
 
 export default function ProfilePage() {
@@ -23,9 +30,12 @@ export default function ProfilePage() {
   const [name, setName] = useState('')
   const [avatar, setAvatar] = useState('')
   const [message, setMessage] = useState('')
+  const [wechatBind, setWechatBind] = useState<WechatBindInfo | null>(null)
+  const [hasPassword, setHasPassword] = useState(false)
 
   useEffect(() => {
     fetchUser()
+    fetchWechatStatus()
   }, [])
 
   const fetchUser = async () => {
@@ -45,6 +55,19 @@ export default function ProfilePage() {
       router.push('/auth/login')
     } finally {
       setLoading(false)
+    }
+  }
+
+  const fetchWechatStatus = async () => {
+    try {
+      const res = await fetch('/api/auth/wechat/status')
+      const data = await res.json()
+      if (res.ok) {
+        setWechatBind(data.wechatBind)
+        setHasPassword(data.hasPassword)
+      }
+    } catch {
+      // 忽略错误
     }
   }
 
@@ -159,7 +182,7 @@ export default function ProfilePage() {
                   />
                 ) : (
                   <div className="w-20 h-20 bg-cyan-600 rounded-full flex items-center justify-center text-white text-2xl font-medium">
-                    {(name || user.email)[0].toUpperCase()}
+                    {(name || user.email || 'U')[0].toUpperCase()}
                   </div>
                 )}
                 <input
@@ -199,7 +222,7 @@ export default function ProfilePage() {
               </label>
               <input
                 type="email"
-                value={user.email}
+                value={user.email || '未设置'}
                 disabled
                 className="w-full px-4 py-2 bg-gray-900 border border-gray-700 rounded-lg text-gray-500 cursor-not-allowed"
               />
@@ -237,6 +260,11 @@ export default function ProfilePage() {
               </button>
             </div>
           </form>
+        </div>
+
+        {/* 微信绑定管理 */}
+        <div className="mt-6">
+          <WechatBindCard wechatBind={wechatBind} hasPassword={hasPassword} />
         </div>
       </main>
     </div>

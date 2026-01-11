@@ -1,4 +1,5 @@
 import type { MDXComponents } from 'mdx/types'
+import CodeBlock from '@/components/ui/CodeBlock'
 
 export function useMDXComponents(components: MDXComponents): MDXComponents {
   return {
@@ -32,16 +33,32 @@ export function useMDXComponents(components: MDXComponents): MDXComponents {
         {children}
       </a>
     ),
-    code: ({ children }) => (
-      <code className="bg-cyber-dark px-2 py-1 rounded text-cyber-green font-mono text-sm border border-cyber-cyan/30">
-        {children}
-      </code>
-    ),
-    pre: ({ children }) => (
-      <pre className="bg-cyber-dark p-4 rounded-lg overflow-x-auto my-4 border border-cyber-cyan/30 shadow-lg shadow-cyber-cyan/10">
-        {children}
-      </pre>
-    ),
+    code: ({ children, className }) => {
+      // Inline code (no className) vs code block (has className from language)
+      if (!className) {
+        return (
+          <code className="bg-cyber-dark px-2 py-1 rounded text-cyber-green font-mono text-sm border border-cyber-cyan/30">
+            {children}
+          </code>
+        )
+      }
+      // Code inside pre block - just return with styling
+      return (
+        <code className={`text-gray-300 font-mono text-sm ${className}`}>
+          {children}
+        </code>
+      )
+    },
+    pre: ({ children }) => {
+      // Extract className from the code child if it exists
+      const codeChild = children as React.ReactElement
+      const className = codeChild?.props?.className || ''
+      return (
+        <CodeBlock className={className}>
+          {children}
+        </CodeBlock>
+      )
+    },
     blockquote: ({ children }) => (
       <blockquote className="border-l-4 border-cyber-pink pl-4 my-4 italic text-gray-400 bg-cyber-dark/50 py-2 rounded-r">
         {children}

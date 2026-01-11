@@ -2,8 +2,9 @@
 
 import { useState } from 'react'
 import { motion } from 'framer-motion'
-import { Play, Maximize2 } from 'lucide-react'
+import { Play } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import CyberVideoPlayer from './video-player'
 
 interface VideoEmbedProps {
   src: string
@@ -30,12 +31,10 @@ export default function VideoEmbed({ src, title, poster, className, type = 'loca
 
   if (type === 'local') {
     return (
-      <div className={cn('relative rounded-lg overflow-hidden border border-cyber-cyan/30', className)}>
-        <video
+      <div className={cn('relative', className)}>
+        <CyberVideoPlayer
           src={src}
           poster={poster}
-          controls
-          className="w-full"
           title={title}
         />
       </div>

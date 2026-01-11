@@ -1,25 +1,32 @@
 'use client'
 
-import { motion } from 'framer-motion'
+import { motion, AnimatePresence } from 'framer-motion'
 import Link from 'next/link'
 import Image from 'next/image'
-import { Calendar, Clock, Tag, ArrowLeft, User } from 'lucide-react'
-import { Post } from '@/lib/mdx'
+import { Calendar, Clock, Tag, ArrowLeft, User, X } from 'lucide-react'
+import { Post, PostMeta } from '@/lib/mdx'
 import { formatDate } from '@/lib/utils'
 import { siteConfig } from '@/config/site'
+import { useReadingMode } from '@/hooks/useReadingMode'
+import { cn } from '@/lib/utils'
 import ReadingProgress from '@/components/blog/ReadingProgress'
 import TOC from '@/components/blog/TOC'
 import LikeButton from '@/components/blog/LikeButton'
 import ShareButtons from '@/components/blog/ShareButtons'
 import Comments from '@/components/blog/Comments'
+import RelatedPosts from '@/components/blog/RelatedPosts'
 import GlitchText from '@/components/ui/GlitchText'
 import NeonBorder from '@/components/effects/NeonBorder'
+import ReadingModeToggle from '@/components/blog/ReadingModeToggle'
 
 interface PostPageClientProps {
   post: Post
+  relatedPosts: PostMeta[]
 }
 
-export default function PostPageClient({ post }: PostPageClientProps) {
+export default function PostPageClient({ post, relatedPosts }: PostPageClientProps) {
+  const { isReadingMode, toggleReadingMode } = useReadingMode()
+
   const postUrl = typeof window !== 'undefined'
     ? `${window.location.origin}/blog/${post.slug}`
     : `${siteConfig.url}/blog/${post.slug}`
@@ -28,13 +35,18 @@ export default function PostPageClient({ post }: PostPageClientProps) {
     <>
       <ReadingProgress />
 
-      <article className="min-h-screen py-20 px-4">
-        <div className="max-w-6xl mx-auto">
-          {/* Back Button */}
+      <article className={cn(
+        'min-h-screen py-20 px-4 transition-all duration-300'
+      )}>
+        <div className={cn(
+          'mx-auto transition-all duration-300',
+          isReadingMode ? 'max-w-3xl' : 'max-w-6xl'
+        )}>
+          {/* Back Button & Reading Mode Toggle */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="mb-8"
+            className="mb-8 flex items-center justify-between"
           >
             <Link
               href="/blog"
@@ -43,11 +55,20 @@ export default function PostPageClient({ post }: PostPageClientProps) {
               <ArrowLeft className="w-4 h-4" />
               返回博客
             </Link>
+
+            <ReadingModeToggle />
           </motion.div>
 
-          <div className="grid grid-cols-1 lg:grid-cols-[1fr_250px] gap-8">
+          <div className={cn(
+            'grid gap-8 transition-all duration-300',
+            isReadingMode
+              ? 'grid-cols-1'
+              : 'grid-cols-1 lg:grid-cols-[1fr_250px]'
+          )}>
             {/* Main Content */}
-            <div>
+            <div className={cn(
+              isReadingMode && 'reading-mode-content'
+            )}>
               {/* Header */}
               <motion.header
                 initial={{ opacity: 0, y: 20 }}
@@ -112,11 +133,13 @@ export default function PostPageClient({ post }: PostPageClientProps) {
                   ))}
                 </div>
 
-                {/* Actions */}
-                <div className="flex items-center gap-4">
-                  <LikeButton slug={post.slug} />
-                  <ShareButtons title={post.title} url={postUrl} />
-                </div>
+                {/* Actions - 非阅读模式下显示 */}
+                {!isReadingMode && (
+                  <div className="flex items-center gap-4">
+                    <LikeButton slug={post.slug} />
+                    <ShareButtons title={post.title} url={postUrl} />
+                  </div>
+                )}
               </motion.header>
 
               {/* Content */}
@@ -125,8 +148,17 @@ export default function PostPageClient({ post }: PostPageClientProps) {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ delay: 0.2 }}
               >
-                <NeonBorder color="cyan" className="p-6 md:p-8 bg-cyber-dark/30">
-                  <div className="prose prose-invert prose-cyber max-w-none">
+                <NeonBorder
+                  color="cyan"
+                  className={cn(
+                    'p-6 md:p-8 bg-cyber-dark/30',
+                    isReadingMode && 'border-transparent shadow-none bg-transparent'
+                  )}
+                >
+                  <div className={cn(
+                    'prose prose-invert prose-cyber max-w-none',
+                    isReadingMode && 'prose-lg'
+                  )}>
                     {/* MDX content would be rendered here */}
                     <div
                       className="text-gray-300 leading-relaxed font-mono"
@@ -143,22 +175,58 @@ export default function PostPageClient({ post }: PostPageClientProps) {
                 </NeonBorder>
               </motion.div>
 
-              {/* Comments */}
-              <motion.div
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.3 }}
-              >
-                <Comments />
-              </motion.div>
+              {/* Comments - 阅读模式下隐藏 */}
+              {!isReadingMode && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: 0.3 }}
+                >
+                  <Comments />
+                </motion.div>
+              )}
+
+              {/* Related Posts - 阅读模式下隐藏 */}
+              {!isReadingMode && <RelatedPosts posts={relatedPosts} />}
             </div>
 
-            {/* Sidebar */}
-            <aside className="hidden lg:block">
-              <TOC content={post.content} />
-            </aside>
+            {/* Sidebar - 阅读模式下隐藏 */}
+            <AnimatePresence>
+              {!isReadingMode && (
+                <motion.aside
+                  initial={{ opacity: 0, x: 20 }}
+                  animate={{ opacity: 1, x: 0 }}
+                  exit={{ opacity: 0, x: 20 }}
+                  className="hidden lg:block"
+                >
+                  <TOC content={post.content} />
+                </motion.aside>
+              )}
+            </AnimatePresence>
           </div>
         </div>
+
+        {/* 阅读模式浮动工具栏 */}
+        <AnimatePresence>
+          {isReadingMode && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 20 }}
+              className="reading-mode-toolbar"
+            >
+              <LikeButton slug={post.slug} />
+              <ShareButtons title={post.title} url={postUrl} />
+              <button
+                onClick={toggleReadingMode}
+                className="p-2 text-gray-400 hover:text-cyber-cyan transition-colors"
+                title="退出阅读模式"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </motion.div>
+          )}
+        </AnimatePresence>
       </article>
     </>
   )

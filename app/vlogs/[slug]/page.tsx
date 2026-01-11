@@ -4,6 +4,7 @@ import { useState, useEffect, use } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { motion } from 'framer-motion'
+import CyberVideoPlayer from '@/components/media/video-player'
 
 interface Vlog {
   id: string
@@ -91,14 +92,13 @@ export default function VlogDetailPage({ params }: { params: Promise<{ slug: str
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-black rounded-lg overflow-hidden mb-6"
+          className="mb-6"
         >
-          <video
+          <CyberVideoPlayer
             src={vlog.videoUrl}
             poster={vlog.thumbnailUrl || undefined}
-            controls
+            title={vlog.title}
             autoPlay
-            className="w-full aspect-video"
           />
         </motion.div>
 

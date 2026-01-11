@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { isAuthenticated } from '@/lib/auth'
+import { rateLimit, createRateLimitResponse, addRateLimitHeaders } from '@/lib/rate-limit'
 import fs from 'fs'
 import path from 'path'
 
@@ -21,6 +22,12 @@ function generateFileName(originalName: string): string {
 }
 
 export async function POST(request: NextRequest) {
+  // Apply rate limiting for upload endpoints
+  const { success, remaining, resetTime } = rateLimit(request, 'upload')
+  if (!success) {
+    return createRateLimitResponse(resetTime, 'upload')
+  }
+
   if (!(await isAuthenticated(request))) {
     return NextResponse.json({ error: '未授权' }, { status: 401 })
   }
@@ -59,7 +66,8 @@ export async function POST(request: NextRequest) {
 
     const url = `/uploads/${fileName}`
 
-    return NextResponse.json({ success: true, url })
+    const response = NextResponse.json({ success: true, url })
+    return addRateLimitHeaders(response, remaining, resetTime, 'upload')
   } catch {
     return NextResponse.json({ error: '上传失败' }, { status: 500 })
   }

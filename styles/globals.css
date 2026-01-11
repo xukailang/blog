@@ -372,3 +372,141 @@ body {
   max-width: 100%;
   height: auto;
 }
+
+/* ============ Reading Mode Styles ============ */
+/* 阅读模式 - 专注阅读体验 */
+.reading-mode-content {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 2rem 1.5rem;
+  font-size: 1.15rem;
+  line-height: 2;
+  letter-spacing: 0.01em;
+}
+
+.reading-mode-content h1 {
+  font-size: 2rem;
+  line-height: 1.3;
+  margin-bottom: 1.5rem;
+}
+
+.reading-mode-content h2 {
+  font-size: 1.5rem;
+  line-height: 1.4;
+  margin-top: 2.5rem;
+  margin-bottom: 1rem;
+}
+
+.reading-mode-content h3 {
+  font-size: 1.25rem;
+  line-height: 1.5;
+  margin-top: 2rem;
+  margin-bottom: 0.75rem;
+}
+
+.reading-mode-content p {
+  margin-bottom: 1.5rem;
+}
+
+.reading-mode-content img {
+  max-width: 100%;
+  height: auto;
+  margin: 2rem auto;
+  display: block;
+}
+
+.reading-mode-content code {
+  font-size: 0.9em;
+}
+
+.reading-mode-content pre {
+  margin: 1.5rem 0;
+  padding: 1rem;
+  overflow-x: auto;
+}
+
+/* 阅读模式浮动工具栏 */
+.reading-mode-toolbar {
+  position: fixed;
+  bottom: 2rem;
+  left: 50%;
+  transform: translateX(-50%);
+  z-index: 100;
+  display: flex;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: var(--bg-card);
+  border: 1px solid var(--border-color);
+  border-radius: 9999px;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+}
+
+/* 阅读模式下的主题适配 */
+[data-theme="light"] .reading-mode-content {
+  background: rgba(255, 255, 255, 0.95);
+}
+
+[data-theme="dark"] .reading-mode-content {
+  background: rgba(17, 17, 17, 0.95);
+}
+
+[data-theme="cyber"] .reading-mode-content {
+  background: rgba(10, 10, 15, 0.95);
+}
+
+/* ============ Reduced Motion Support ============ */
+/* Respect user's motion preferences */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  /* Disable specific animations */
+  .glitch,
+  .glitch::before,
+  .glitch::after {
+    animation: none !important;
+  }
+
+  .scanlines {
+    display: none !important;
+  }
+
+  .neon-text {
+    text-shadow: none !important;
+  }
+
+  .neon-border {
+    box-shadow: none !important;
+  }
+
+  .cyber-button:hover {
+    transform: none !important;
+  }
+
+  .animate-pulse,
+  .animate-bounce,
+  .animate-spin,
+  .animate-ping,
+  .animate-pulse-neon,
+  .animate-glow,
+  .animate-glitch,
+  .animate-scanline,
+  .animate-flicker,
+  .animate-float,
+  .animate-fade-in {
+    animation: none !important;
+  }
+
+  /* Disable Framer Motion animations via CSS */
+  [style*="transform"],
+  [style*="opacity"] {
+    transition: none !important;
+  }
+}

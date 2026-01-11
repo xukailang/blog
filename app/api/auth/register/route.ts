@@ -1,8 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { createUser, getUserByEmail } from '@/lib/db/users'
 import { createUserSession, USER_COOKIE_NAME } from '@/lib/auth-users'
+import { rateLimit, createRateLimitResponse, addRateLimitHeaders } from '@/lib/rate-limit'
 
 export async function POST(request: NextRequest) {
+  // Apply rate limiting for auth endpoints
+  const { success, remaining, resetTime } = rateLimit(request, 'auth')
+  if (!success) {
+    return createRateLimitResponse(resetTime, 'auth')
+  }
+
   try {
     const { email, password, name } = await request.json()
 
@@ -67,7 +74,7 @@ export async function POST(request: NextRequest) {
       path: '/',
     })
 
-    return response
+    return addRateLimitHeaders(response, remaining, resetTime, 'auth')
   } catch (error) {
     console.error('Registration error:', error)
     return NextResponse.json(

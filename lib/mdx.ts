@@ -125,6 +125,21 @@ export function getAllTags(): string[] {
   return Array.from(tags)
 }
 
+export function getTagsWithCount(): { name: string; count: number }[] {
+  const posts = getAllPosts()
+  const tagCounts = new Map<string, number>()
+
+  posts.forEach(post => {
+    post.tags.forEach(tag => {
+      tagCounts.set(tag, (tagCounts.get(tag) || 0) + 1)
+    })
+  })
+
+  return Array.from(tagCounts.entries())
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
+}
+
 export function getAllCategories(): string[] {
   const posts = getAllPosts()
   const categories = new Set<string>()
@@ -139,6 +154,56 @@ export function searchPosts(query: string): PostMeta[] {
     post.description.toLowerCase().includes(lowercaseQuery) ||
     post.tags.some(tag => tag.toLowerCase().includes(lowercaseQuery))
   )
+}
+
+export function getPostContent(slug: string): string {
+  const realSlug = slug.replace(/\.mdx$/, '')
+  const fullPath = path.join(postsDirectory, `${realSlug}.mdx`)
+
+  if (!fs.existsSync(fullPath)) {
+    return ''
+  }
+
+  const fileContents = fs.readFileSync(fullPath, 'utf8')
+  const { content } = matter(fileContents)
+  return content
+}
+
+export function getRelatedPosts(currentSlug: string, limit: number = 4): PostMeta[] {
+  const currentPost = getPostBySlug(currentSlug)
+  if (!currentPost) return []
+
+  const allPosts = getAllPosts().filter(post => post.slug !== currentSlug)
+
+  // Calculate relevance score for each post
+  const scoredPosts = allPosts.map(post => {
+    let score = 0
+
+    // Same category: +10 points
+    if (post.category === currentPost.category) {
+      score += 10
+    }
+
+    // Shared tags: +5 points each
+    const sharedTags = post.tags.filter(tag => currentPost.tags.includes(tag))
+    score += sharedTags.length * 5
+
+    // Recent posts get a small boost (within 30 days: +2 points)
+    const daysDiff = Math.abs(new Date(post.date).getTime() - new Date(currentPost.date).getTime()) / (1000 * 60 * 60 * 24)
+    if (daysDiff <= 30) {
+      score += 2
+    }
+
+    return { post, score }
+  })
+
+  // Sort by score (descending), then by date (descending)
+  scoredPosts.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score
+    return new Date(b.post.date).getTime() - new Date(a.post.date).getTime()
+  })
+
+  return scoredPosts.slice(0, limit).map(item => item.post)
 }
 
 // ============ Admin Functions ============

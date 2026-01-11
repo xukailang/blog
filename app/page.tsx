@@ -6,6 +6,7 @@ import { ArrowRight, Sparkles, Code, Palette, Zap } from 'lucide-react'
 import GlitchText from '@/components/ui/GlitchText'
 import TypeWriter from '@/components/effects/TypeWriter'
 import NeonBorder from '@/components/effects/NeonBorder'
+import PopularPosts from '@/components/blog/PopularPosts'
 
 const features = [
   {
@@ -159,6 +160,19 @@ export default function HomePage() {
               </motion.div>
             ))}
           </div>
+        </div>
+      </section>
+
+      {/* Popular Posts Section */}
+      <section className="py-20 px-4 bg-cyber-dark/30">
+        <div className="max-w-4xl mx-auto">
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+          >
+            <PopularPosts limit={5} />
+          </motion.div>
         </div>
       </section>
 

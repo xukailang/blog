@@ -5,16 +5,17 @@ import { useTheme } from 'next-themes'
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Menu, X, Search, Moon, Sun, Zap } from 'lucide-react'
+import { Menu, X, Search, Moon, Sun, Zap, Rss } from 'lucide-react'
 import { siteConfig } from '@/config/site'
 import { cn } from '@/lib/utils'
 import UserMenu from '@/components/auth/UserMenu'
+import SearchModal from '@/components/search/SearchModal'
+import NotificationBell from '@/components/notifications/NotificationBell'
 
 export default function Header() {
   const [isOpen, setIsOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
-  const [searchQuery, setSearchQuery] = useState('')
   const [mounted, setMounted] = useState(false)
   const { theme, setTheme } = useTheme()
   const pathname = usePathname()
@@ -29,6 +30,17 @@ export default function Header() {
     }
     window.addEventListener('scroll', handleScroll)
     return () => window.removeEventListener('scroll', handleScroll)
+  }, [])
+
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault()
+        setSearchOpen(true)
+      }
+    }
+    document.addEventListener('keydown', handleKeyDown)
+    return () => document.removeEventListener('keydown', handleKeyDown)
   }, [])
 
   const toggleTheme = () => {
@@ -48,13 +60,6 @@ export default function Header() {
         return <Moon className="w-5 h-5" />
       default:
         return <Zap className="w-5 h-5" />
-    }
-  }
-
-  const handleSearch = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (searchQuery.trim()) {
-      window.location.href = `/blog?search=${encodeURIComponent(searchQuery)}`
     }
   }
 
@@ -120,15 +125,33 @@ export default function Header() {
 
           {/* Actions */}
           <div className="flex items-center space-x-4">
+            {/* RSS Button */}
+            <motion.a
+              href="/feed.xml"
+              target="_blank"
+              rel="noopener noreferrer"
+              whileHover={{ scale: 1.1 }}
+              whileTap={{ scale: 0.9 }}
+              className="p-2 transition-colors hidden sm:block"
+              style={{ color: 'var(--text-secondary)' }}
+              title="RSS 订阅"
+            >
+              <Rss className="w-5 h-5" />
+            </motion.a>
+
             {/* Search Button */}
             <motion.button
               whileHover={{ scale: 1.1 }}
               whileTap={{ scale: 0.9 }}
-              onClick={() => setSearchOpen(!searchOpen)}
-              className="p-2 transition-colors"
+              onClick={() => setSearchOpen(true)}
+              className="p-2 transition-colors flex items-center gap-2"
               style={{ color: 'var(--text-secondary)' }}
+              title="搜索 (Ctrl+K)"
             >
               <Search className="w-5 h-5" />
+              <span className="hidden sm:inline text-xs px-1.5 py-0.5 rounded bg-[var(--bg-secondary)]">
+                Ctrl+K
+              </span>
             </motion.button>
 
             {/* Theme Toggle */}
@@ -141,6 +164,11 @@ export default function Header() {
             >
               {getThemeIcon()}
             </motion.button>
+
+            {/* Notification Bell */}
+            <div className="hidden md:block">
+              <NotificationBell />
+            </div>
 
             {/* User Menu */}
             <div className="hidden md:block">
@@ -159,36 +187,10 @@ export default function Header() {
             </motion.button>
           </div>
         </div>
-
-        {/* Search Bar */}
-        <AnimatePresence>
-          {searchOpen && (
-            <motion.form
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-              exit={{ opacity: 0, height: 0 }}
-              onSubmit={handleSearch}
-              className="pb-4"
-            >
-              <div className="relative">
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="搜索文章..."
-                  className="w-full rounded-lg px-4 py-2 pl-10 font-mono focus:outline-none focus:ring-1"
-                  style={{
-                    backgroundColor: 'var(--bg-secondary)',
-                    border: '1px solid var(--border-color)',
-                    color: 'var(--text-primary)',
-                  }}
-                />
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4" style={{ color: 'var(--text-muted)' }} />
-              </div>
-            </motion.form>
-          )}
-        </AnimatePresence>
       </nav>
+
+      {/* Search Modal */}
+      <SearchModal isOpen={searchOpen} onClose={() => setSearchOpen(false)} />
 
       {/* Mobile Menu */}
       <AnimatePresence>

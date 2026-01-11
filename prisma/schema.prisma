@@ -11,19 +11,24 @@ datasource db {
 
 // ============ USER SYSTEM ============
 model User {
-  id           String    @id @default(cuid())
-  email        String    @unique
-  passwordHash String    @map("password_hash")
+  id           String       @id @default(cuid())
+  email        String?      @unique  // 可选，支持纯微信用户
+  passwordHash String?      @map("password_hash")  // 可选，支持纯微信用户
   name         String?
   avatar       String?
-  role         UserRole  @default(USER)
-  createdAt    DateTime  @default(now()) @map("created_at")
-  updatedAt    DateTime  @updatedAt @map("updated_at")
+  role         UserRole     @default(USER)
+  createdAt    DateTime     @default(now()) @map("created_at")
+  updatedAt    DateTime     @updatedAt @map("updated_at")
 
   // Relations
-  comments     Comment[]
-  likes        Like[]
-  sessions     Session[]
+  comments       Comment[]
+  likes          Like[]
+  sessions       Session[]
+  wechatBind     WechatBind?  // 微信绑定关系
+  githubBind     GithubBind?  // GitHub绑定关系
+  favorites      Favorite[]
+  readingHistory ReadingHistory[]
+  notifications  Notification[]
 
   @@map("users")
 }
@@ -43,6 +48,53 @@ model Session {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("sessions")
+}
+
+// ============ WECHAT SYSTEM ============
+model WechatBind {
+  id        String   @id @default(cuid())
+  userId    String   @unique @map("user_id")
+  openId    String   @unique @map("open_id")
+  unionId   String?  @unique @map("union_id")
+  nickname  String?
+  avatar    String?
+  bindAt    DateTime @default(now()) @map("bind_at")
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("wechat_binds")
+}
+
+// ============ GITHUB SYSTEM ============
+model GithubBind {
+  id          String   @id @default(cuid())
+  userId      String   @unique @map("user_id")
+  githubId    Int      @unique @map("github_id")
+  username    String
+  displayName String?  @map("display_name")
+  email       String?
+  avatar      String?
+  bindAt      DateTime @default(now()) @map("bind_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("github_binds")
+}
+
+model WechatLoginState {
+  id        String   @id @default(cuid())
+  state     String   @unique
+  status    String   @default("pending")  // pending | scanned | confirmed | expired
+  userId    String?  @map("user_id")
+  openId    String?  @map("open_id")
+  unionId   String?  @map("union_id")
+  nickname  String?
+  avatar    String?
+  scene     String   @default("login")    // login | bind
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@map("wechat_login_states")
 }
 
 // ============ CONTENT SYSTEM ============
@@ -184,4 +236,107 @@ model VlogComment {
   replies VlogComment[] @relation("VlogCommentReplies")
 
   @@map("vlog_comments")
+}
+
+// ============ SERIES SYSTEM ============
+model Series {
+  id          String   @id @default(cuid())
+  name        String   @unique
+  slug        String   @unique
+  description String?
+  coverImage  String?  @map("cover_image")
+  color       String?
+  isPublished Boolean  @default(true) @map("is_published")
+  sortOrder   Int      @default(0) @map("sort_order")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  posts SeriesPost[]
+
+  @@map("series")
+}
+
+model SeriesPost {
+  id        String   @id @default(cuid())
+  seriesId  String   @map("series_id")
+  postSlug  String   @map("post_slug")
+  order     Int      @default(0)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  series Series @relation(fields: [seriesId], references: [id], onDelete: Cascade)
+
+  @@unique([seriesId, postSlug])
+  @@index([postSlug])
+  @@map("series_posts")
+}
+
+// ============ USER ENGAGEMENT ============
+model Favorite {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  postSlug  String   @map("post_slug")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postSlug])
+  @@map("favorites")
+}
+
+model ReadingHistory {
+  id       String   @id @default(cuid())
+  userId   String   @map("user_id")
+  postSlug String   @map("post_slug")
+  readAt   DateTime @default(now()) @map("read_at")
+  progress Float    @default(0)
+  duration Int      @default(0)
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postSlug])
+  @@index([userId, readAt])
+  @@map("reading_history")
+}
+
+// ============ NOTIFICATION SYSTEM ============
+model Notification {
+  id        String           @id @default(cuid())
+  userId    String           @map("user_id")
+  type      NotificationType
+  title     String
+  content   String?
+  link      String?
+  isRead    Boolean          @default(false) @map("is_read")
+  metadata  Json?
+  createdAt DateTime         @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, isRead])
+  @@index([userId, createdAt])
+  @@map("notifications")
+}
+
+enum NotificationType {
+  COMMENT_REPLY    // 评论回复
+  POST_LIKE        // 文章点赞
+  NEW_FOLLOWER     // 新关注者
+  SYSTEM           // 系统通知
+  MENTION          // @提及
+}
+
+// ============ NEWSLETTER SYSTEM ============
+model Subscriber {
+  id            String    @id @default(cuid())
+  email         String    @unique
+  name          String?
+  isVerified    Boolean   @default(false) @map("is_verified")
+  verifyToken   String?   @unique @map("verify_token")
+  unsubToken    String    @unique @map("unsub_token")
+  subscribedAt  DateTime  @default(now()) @map("subscribed_at")
+  verifiedAt    DateTime? @map("verified_at")
+  unsubscribedAt DateTime? @map("unsubscribed_at")
+
+  @@index([email])
+  @@map("subscribers")
 }

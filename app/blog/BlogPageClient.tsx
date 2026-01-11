@@ -1,11 +1,15 @@
 'use client'
 
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo, useRef, useCallback, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Search, Filter, X } from 'lucide-react'
 import { PostMeta } from '@/lib/mdx'
 import PostCard from '@/components/blog/PostCard'
 import GlitchText from '@/components/ui/GlitchText'
+import { useInfiniteScroll } from '@/hooks/useInfiniteScroll'
+import InfiniteScrollLoader from '@/components/blog/InfiniteScrollLoader'
+
+const POSTS_PER_PAGE = 9 // 每次加载的文章数量
 
 interface BlogPageClientProps {
   posts: PostMeta[]
@@ -18,8 +22,11 @@ export default function BlogPageClient({ posts, tags, categories }: BlogPageClie
   const [selectedTag, setSelectedTag] = useState<string | null>(null)
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null)
   const [showFilters, setShowFilters] = useState(false)
+  const [displayCount, setDisplayCount] = useState(POSTS_PER_PAGE)
+  const [isLoading, setIsLoading] = useState(false)
   const hasInteracted = useRef(false)
 
+  // 筛选后的文章
   const filteredPosts = useMemo(() => {
     return posts.filter(post => {
       const matchesSearch = searchQuery === '' ||
@@ -32,6 +39,38 @@ export default function BlogPageClient({ posts, tags, categories }: BlogPageClie
       return matchesSearch && matchesTag && matchesCategory
     })
   }, [posts, searchQuery, selectedTag, selectedCategory])
+
+  // 当前显示的文章
+  const displayedPosts = useMemo(() => {
+    return filteredPosts.slice(0, displayCount)
+  }, [filteredPosts, displayCount])
+
+  // 是否还有更多文章
+  const hasMore = displayCount < filteredPosts.length
+
+  // 加载更多文章
+  const loadMore = useCallback(() => {
+    if (isLoading || !hasMore) return
+
+    setIsLoading(true)
+
+    // 模拟加载延迟，提供更好的用户体验
+    setTimeout(() => {
+      setDisplayCount(prev => Math.min(prev + POSTS_PER_PAGE, filteredPosts.length))
+      setIsLoading(false)
+    }, 300)
+  }, [isLoading, hasMore, filteredPosts.length])
+
+  // 无限滚动 hook
+  const { setTarget } = useInfiniteScroll(loadMore, {
+    rootMargin: '200px',
+    threshold: 0.1
+  })
+
+  // 筛选条件变化时重置显示数量
+  useEffect(() => {
+    setDisplayCount(POSTS_PER_PAGE)
+  }, [searchQuery, selectedTag, selectedCategory])
 
   const clearFilters = () => {
     setSearchQuery('')
@@ -56,7 +95,8 @@ export default function BlogPageClient({ posts, tags, categories }: BlogPageClie
             className="text-4xl md:text-5xl font-bold text-cyber-cyan mb-4"
           />
           <p className="text-gray-500 font-mono">
-            共 {posts.length} 篇文章
+            共 {filteredPosts.length} 篇文章
+            {hasActiveFilters && ` (筛选自 ${posts.length} 篇)`}
           </p>
         </motion.div>
 
@@ -194,19 +234,32 @@ export default function BlogPageClient({ posts, tags, categories }: BlogPageClie
         </motion.div>
 
         {/* Posts Grid */}
-        {filteredPosts.length > 0 ? (
-          <AnimatePresence mode="popLayout">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {filteredPosts.map((post, index) => (
-                <PostCard
-                  key={post.slug}
-                  post={post}
-                  index={index}
-                  disableAnimation={hasInteracted.current}
-                />
-              ))}
-            </div>
-          </AnimatePresence>
+        {displayedPosts.length > 0 ? (
+          <>
+            <AnimatePresence mode="popLayout">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                {displayedPosts.map((post, index) => (
+                  <PostCard
+                    key={post.slug}
+                    post={post}
+                    index={index}
+                    disableAnimation={hasInteracted.current}
+                  />
+                ))}
+              </div>
+            </AnimatePresence>
+
+            {/* 加载更多触发器 */}
+            {hasMore && <div ref={setTarget} className="w-full h-4 mt-4" />}
+
+            {/* 加载状态指示器 */}
+            <InfiniteScrollLoader
+              isLoading={isLoading}
+              hasMore={hasMore}
+              loadedCount={displayedPosts.length}
+              totalCount={filteredPosts.length}
+            />
+          </>
         ) : (
           <motion.div
             initial={{ opacity: 0 }}

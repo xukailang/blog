@@ -1,6 +1,6 @@
 import { Metadata } from 'next'
 import { notFound } from 'next/navigation'
-import { getPostBySlug, getAllPosts } from '@/lib/mdx'
+import { getPostBySlug, getAllPosts, getRelatedPosts } from '@/lib/mdx'
 import PostPageClient from './PostPageClient'
 
 interface PostPageProps {
@@ -45,5 +45,7 @@ export default async function PostPage({ params }: PostPageProps) {
     notFound()
   }
 
-  return <PostPageClient post={post} />
+  const relatedPosts = getRelatedPosts(slug, 4)
+
+  return <PostPageClient post={post} relatedPosts={relatedPosts} />
 }

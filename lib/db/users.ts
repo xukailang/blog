@@ -3,8 +3,8 @@ import bcrypt from 'bcryptjs'
 import { UserRole } from '@prisma/client'
 
 export interface CreateUserData {
-  email: string
-  password: string
+  email?: string
+  password?: string
   name?: string
   role?: UserRole
 }
@@ -16,7 +16,7 @@ export interface UpdateUserData {
 }
 
 export async function createUser(data: CreateUserData) {
-  const passwordHash = await bcrypt.hash(data.password, 10)
+  const passwordHash = data.password ? await bcrypt.hash(data.password, 10) : null
 
   return prisma.user.create({
     data: {
@@ -60,7 +60,7 @@ export async function verifyUserPassword(email: string, password: string) {
     where: { email },
   })
 
-  if (!user) return null
+  if (!user || !user.passwordHash) return null
 
   const isValid = await bcrypt.compare(password, user.passwordHash)
   if (!isValid) return null
@@ -99,4 +99,42 @@ export async function updateUserRole(id: string, role: UserRole) {
     where: { id },
     data: { role },
   })
+}
+
+// 微信相关函数
+export async function getUserByWechatOpenId(openId: string) {
+  const wechatBind = await prisma.wechatBind.findUnique({
+    where: { openId },
+    include: { user: true },
+  })
+
+  return wechatBind?.user || null
+}
+
+export async function createWechatUser(data: {
+  openId: string
+  unionId?: string
+  nickname?: string
+  avatar?: string
+}) {
+  // 创建用户并绑定微信
+  const user = await prisma.user.create({
+    data: {
+      name: data.nickname,
+      avatar: data.avatar,
+      wechatBind: {
+        create: {
+          openId: data.openId,
+          unionId: data.unionId,
+          nickname: data.nickname,
+          avatar: data.avatar,
+        },
+      },
+    },
+    include: {
+      wechatBind: true,
+    },
+  })
+
+  return user
 }
