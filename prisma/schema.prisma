@@ -29,6 +29,13 @@ model User {
   favorites      Favorite[]
   readingHistory ReadingHistory[]
   notifications  Notification[]
+  highlights     Highlight[]
+  bookmarks              Bookmark[]
+  autoSaveDrafts         AutoSaveDraft[]
+  pushSubscriptions      PushSubscription[]
+  notificationPreference NotificationPreference?
+  userAchievements       UserAchievement[]
+  userStats              UserStats?
 
   @@map("users")
 }
@@ -116,18 +123,21 @@ model Category {
 // PostMeta stores database-side metadata for MDX posts
 // The actual content remains in MDX files
 model PostMeta {
-  id          String   @id @default(cuid())
-  slug        String   @unique
-  viewCount   Int      @default(0) @map("view_count")
-  categoryId  String?  @map("category_id")
-  createdAt   DateTime @default(now()) @map("created_at")
-  updatedAt   DateTime @updatedAt @map("updated_at")
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  viewCount   Int       @default(0) @map("view_count")
+  categoryId  String?   @map("category_id")
+  scheduledAt DateTime? @map("scheduled_at") // 定时发布时间
+  isPublished Boolean   @default(true) @map("is_published") // 是否已发布
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
 
   // Relations
   category    Category? @relation(fields: [categoryId], references: [id])
   comments    Comment[]
   likes       Like[]
 
+  @@index([scheduledAt, isPublished])
   @@map("post_meta")
 }
 
@@ -141,16 +151,70 @@ model Comment {
   guestEmail String?  @map("guest_email")
   parentId   String?  @map("parent_id")
   isApproved Boolean  @default(false) @map("is_approved")
+  isEdited   Boolean  @default(false) @map("is_edited")
+  editedAt   DateTime? @map("edited_at")
   createdAt  DateTime @default(now()) @map("created_at")
   updatedAt  DateTime @updatedAt @map("updated_at")
 
   // Relations
-  postMeta PostMeta  @relation(fields: [postSlug], references: [slug], onDelete: Cascade)
-  user     User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
-  parent   Comment?  @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
-  replies  Comment[] @relation("CommentReplies")
+  postMeta  PostMeta          @relation(fields: [postSlug], references: [slug], onDelete: Cascade)
+  user      User?             @relation(fields: [userId], references: [id], onDelete: SetNull)
+  parent    Comment?          @relation("CommentReplies", fields: [parentId], references: [id], onDelete: Cascade)
+  replies   Comment[]         @relation("CommentReplies")
+  reactions CommentReaction[]
+  reports   CommentReport[]
 
   @@map("comments")
+}
+
+// 评论表情反应
+model CommentReaction {
+  id        String   @id @default(cuid())
+  commentId String   @map("comment_id")
+  userId    String?  @map("user_id")
+  ipHash    String?  @map("ip_hash")
+  emoji     String   // 表情类型: like, love, laugh, wow, sad, angry
+  createdAt DateTime @default(now()) @map("created_at")
+
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId, emoji])
+  @@unique([commentId, ipHash, emoji])
+  @@map("comment_reactions")
+}
+
+// 评论举报
+model CommentReport {
+  id        String       @id @default(cuid())
+  commentId String       @map("comment_id")
+  userId    String?      @map("user_id")
+  ipHash    String?      @map("ip_hash")
+  reason    ReportReason
+  detail    String?
+  status    ReportStatus @default(PENDING)
+  createdAt DateTime     @default(now()) @map("created_at")
+  resolvedAt DateTime?   @map("resolved_at")
+
+  comment Comment @relation(fields: [commentId], references: [id], onDelete: Cascade)
+
+  @@unique([commentId, userId])
+  @@unique([commentId, ipHash])
+  @@map("comment_reports")
+}
+
+enum ReportReason {
+  SPAM           // 垃圾信息
+  HARASSMENT     // 骚扰
+  INAPPROPRIATE  // 不当内容
+  MISINFORMATION // 虚假信息
+  OTHER          // 其他
+}
+
+enum ReportStatus {
+  PENDING   // 待处理
+  REVIEWED  // 已审核
+  RESOLVED  // 已解决
+  DISMISSED // 已驳回
 }
 
 model Like {
@@ -339,4 +403,180 @@ model Subscriber {
 
   @@index([email])
   @@map("subscribers")
+}
+
+// ============ HIGHLIGHT & BOOKMARK SYSTEM ============
+
+// 文章高亮标注
+model Highlight {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  postSlug    String   @map("post_slug")
+  text        String   // 高亮的文本内容
+  note        String?  // 用户笔记
+  color       String   @default("#ffff00") // 高亮颜色
+  startOffset Int      @map("start_offset") // 文本起始位置
+  endOffset   Int      @map("end_offset")   // 文本结束位置
+  selector    String?  // CSS 选择器，用于定位
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, postSlug])
+  @@map("highlights")
+}
+
+// 文章书签
+model Bookmark {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  postSlug  String   @map("post_slug")
+  title     String?  // 书签标题（可选）
+  note      String?  // 书签笔记
+  position  Float    @default(0) // 阅读位置（百分比）
+  selector  String?  // CSS 选择器，用于定位
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postSlug])
+  @@index([userId])
+  @@map("bookmarks")
+}
+
+// ============ AUTO SAVE DRAFT SYSTEM ============
+model AutoSaveDraft {
+  id          String   @id @default(cuid())
+  userId      String   @map("user_id")
+  postSlug    String?  @map("post_slug") // null 表示新文章
+  title       String?
+  content     String   @db.Text
+  metadata    Json?    // 存储 frontmatter 数据
+  lastSavedAt DateTime @default(now()) @map("last_saved_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, postSlug])
+  @@map("auto_save_drafts")
+}
+
+// ============ POST VERSION SYSTEM ============
+model PostVersion {
+  id          String   @id @default(cuid())
+  postSlug    String   @map("post_slug")
+  version     Int      // 版本号
+  title       String
+  content     String   @db.Text
+  description String?
+  tags        String[] // PostgreSQL 数组
+  category    String?
+  coverImage  String?  @map("cover_image")
+  changeNote  String?  @map("change_note") // 变更说明
+  createdBy   String?  @map("created_by")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@unique([postSlug, version])
+  @@index([postSlug, createdAt])
+  @@map("post_versions")
+}
+
+// ============ PUSH NOTIFICATION SYSTEM ============
+model PushSubscription {
+  id        String   @id @default(cuid())
+  userId    String   @map("user_id")
+  endpoint  String   @unique
+  p256dh    String
+  auth      String
+  userAgent String?  @map("user_agent")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("push_subscriptions")
+}
+
+model NotificationPreference {
+  id              String  @id @default(cuid())
+  userId          String  @unique @map("user_id")
+  emailEnabled    Boolean @default(true) @map("email_enabled")
+  pushEnabled     Boolean @default(true) @map("push_enabled")
+  commentReply    Boolean @default(true) @map("comment_reply")
+  postLike        Boolean @default(true) @map("post_like")
+  mention         Boolean @default(true)
+  system          Boolean @default(true)
+  emailDigest     String  @default("instant") @map("email_digest") // instant, daily, weekly, none
+  quietHoursStart Int?    @map("quiet_hours_start") // 0-23
+  quietHoursEnd   Int?    @map("quiet_hours_end")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("notification_preferences")
+}
+
+// ============ ACHIEVEMENT SYSTEM ============
+model Achievement {
+  id          String              @id @default(cuid())
+  code        String              @unique // 唯一标识符
+  name        String
+  description String
+  icon        String              // 图标 URL 或 emoji
+  category    AchievementCategory
+  tier        AchievementTier     @default(BRONZE)
+  points      Int                 @default(10)
+  isSecret    Boolean             @default(false) @map("is_secret")
+  condition   Json                // 触发条件配置
+  createdAt   DateTime            @default(now()) @map("created_at")
+
+  userAchievements UserAchievement[]
+
+  @@map("achievements")
+}
+
+enum AchievementCategory {
+  READING      // 阅读相关
+  COMMENTING   // 评论相关
+  SOCIAL       // 社交相关
+  EXPLORATION  // 探索相关
+  SPECIAL      // 特殊成就
+}
+
+enum AchievementTier {
+  BRONZE
+  SILVER
+  GOLD
+  PLATINUM
+  DIAMOND
+}
+
+model UserAchievement {
+  id            String   @id @default(cuid())
+  userId        String   @map("user_id")
+  achievementId String   @map("achievement_id")
+  unlockedAt    DateTime @default(now()) @map("unlocked_at")
+  progress      Int      @default(100) // 进度百分比
+
+  user        User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+  achievement Achievement @relation(fields: [achievementId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, achievementId])
+  @@map("user_achievements")
+}
+
+model UserStats {
+  id              String    @id @default(cuid())
+  userId          String    @unique @map("user_id")
+  totalComments   Int       @default(0) @map("total_comments")
+  totalLikes      Int       @default(0) @map("total_likes")
+  totalReads      Int       @default(0) @map("total_reads")
+  totalShares     Int       @default(0) @map("total_shares")
+  loginStreak     Int       @default(0) @map("login_streak")
+  maxLoginStreak  Int       @default(0) @map("max_login_streak")
+  lastLoginDate   DateTime? @map("last_login_date")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("user_stats")
 }
